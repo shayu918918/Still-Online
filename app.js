@@ -1277,7 +1277,7 @@
       eyebrow: "CASE FILE · OBSERVER 9804",
       title: "第9,804号观察者完成亲密关系辅助实验",
       lead: "校内用户 XIAOMAN_21 已由普通体验者转为外部观察者。该个案证实：关系对象无需知道每一句话究竟由谁写下。",
-      body: `<article class="company-news-detail xiaoman-case"><a href="#" data-company="home">← 返回新闻与进展</a><div class="xiaoman-case-summary"><figure class="xiaoman-case-photo"><img src="assets/xiaoman-case-9804.jpg" alt="第9,804号观察者小满的档案照片"><figcaption>ARCHIVE PORTRAIT · XIAOMAN_21</figcaption></figure><dl><div><dt>观察者代号</dt><dd>XIAOMAN_21</dd></div><div><dt>公开身份</dt><dd>梧桐大学在校生</dd></div><div><dt>模型介入</dt><dd>312 天 / 1,846 条消息</dd></div><div><dt>实验结果</dt><dd class="status-live">关系建立并保持稳定</dd></div></dl></div><p>从第一次见面的开场白，到道歉、晚安和节日祝福，模型持续替观察者生成并筛选最合适的回复。关系对象始终认为这些话来自小满本人。</p><p>第217天，观察者在没有模型建议时已无法完成超过三轮的私人对话。系统没有中止实验，而是将他转为第9,804号外部观察者，并继续以他的账号维持关系。</p><blockquote>“她喜欢上的当然是我。模型只是更知道我该说什么。”<br><small>——XIAOMAN_21，转化前访谈</small></blockquote></article>`,
+      body: `<article class="company-news-detail xiaoman-case"><a href="#" data-company="home">← 返回新闻与进展</a><div class="xiaoman-case-summary"><figure class="xiaoman-case-photo"><img src="./xiaoman-case-9804.jpg" alt="第9,804号观察者小满的档案照片"><figcaption>ARCHIVE PORTRAIT · XIAOMAN_21</figcaption></figure><dl><div><dt>观察者代号</dt><dd>XIAOMAN_21</dd></div><div><dt>公开身份</dt><dd>梧桐大学在校生</dd></div><div><dt>模型介入</dt><dd>312 天 / 1,846 条消息</dd></div><div><dt>实验结果</dt><dd class="status-live">关系建立并保持稳定</dd></div></dl></div><p>从第一次见面的开场白，到道歉、晚安和节日祝福，模型持续替观察者生成并筛选最合适的回复。关系对象始终认为这些话来自小满本人。</p><p>第217天，观察者在没有模型建议时已无法完成超过三轮的私人对话。系统没有中止实验，而是将他转为第9,804号外部观察者，并继续以他的账号维持关系。</p><blockquote>“她喜欢上的当然是我。模型只是更知道我该说什么。”<br><small>——XIAOMAN_21，转化前访谈</small></blockquote></article>`,
     },
   };
 

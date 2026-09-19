@@ -60,15 +60,15 @@ button { cursor: pointer; }
 .auth-form p { min-height: 24px; margin: 6px 0 0; color: #8d3d37; font-size: .8rem; }
 
 /* Avatar atlas */
-.avatar { width: 58px; height: 58px; display: inline-block; flex: 0 0 auto; border: 1px solid #b6c2cb; background-image: url("./assets/forum-avatars-v1.png"); background-size: 300% 300%; background-repeat: no-repeat; background-color: #dde5ea; }
+.avatar { width: 58px; height: 58px; display: inline-block; flex: 0 0 auto; border: 1px solid #b6c2cb; background-image: url("./forum-avatars-v1.png"); background-size: 300% 300%; background-repeat: no-repeat; background-color: #dde5ea; }
 .avatar.mini { width: 42px; height: 42px; border-radius: 5px; }
 .avatar-1 { background-position: 0 0; } .avatar-2 { background-position: 50% 0; } .avatar-3 { background-position: 100% 0; }
 .avatar-4 { background-position: 0 50%; } .avatar-5 { background-position: 50% 50%; } .avatar-6 { background-position: 100% 50%; }
 .avatar-7 { background-position: 0 100%; } .avatar-8 { background-position: 50% 100%; } .avatar-9 { background-position: 100% 100%; }
-.avatar.school-atlas-avatar { background-image: url("./assets/baiyu-avatars-v3.png"); background-size: 800% 800%; background-position: var(--school-avatar-x) var(--school-avatar-y); }
-.corrupted-lusi-avatar { width: 58px; height: 58px; display: inline-block; flex: 0 0 auto; border: 1px solid #67717a; background: #101519 url("./assets/lusi-interface-v1.png") center 42% / cover no-repeat; }
+.avatar.school-atlas-avatar { background-image: url("./baiyu-avatars-v3.png"); background-size: 800% 800%; background-position: var(--school-avatar-x) var(--school-avatar-y); }
+.corrupted-lusi-avatar { width: 58px; height: 58px; display: inline-block; flex: 0 0 auto; border: 1px solid #67717a; background: #101519 url("./lusi-interface-v1.png") center 42% / cover no-repeat; }
 .corrupted-lusi-avatar.mini { width: 42px; height: 42px; border-radius: 5px; }
-.community-avatar { width: 58px; height: 58px; display: inline-block; flex: 0 0 auto; border: 1px solid #c0cbc7; border-radius: 50%; background-image: url("./assets/baiyu-avatars-v3.png"); background-size: 800% 800%; background-position: var(--avatar-x) var(--avatar-y); background-repeat: no-repeat; background-color: #dce5e1; }
+.community-avatar { width: 58px; height: 58px; display: inline-block; flex: 0 0 auto; border: 1px solid #c0cbc7; border-radius: 50%; background-image: url("./baiyu-avatars-v3.png"); background-size: 800% 800%; background-position: var(--avatar-x) var(--avatar-y); background-repeat: no-repeat; background-color: #dce5e1; }
 .community-avatar.mini { width: 42px; height: 42px; }
 
 /* Old campus forum */
@@ -217,13 +217,13 @@ button { cursor: pointer; }
 .blog-password-note { margin: 22px 0; padding: 14px 16px; color: #53635a; background: #f2f4ef; border-left: 3px solid #75877d; text-align: left; }
 .blog-password-note b { display: block; margin-bottom: 4px; color: #36473e; font-size: .78rem; }
 .blog-password-note p { margin: 0; line-height: 1.7; }
-.lusi-blog-photo { width: 100%; aspect-ratio: 4 / 3; margin: 0 0 26px; background-image: url("./assets/lusi-blog-atlas-v1.png"); background-repeat: no-repeat; background-size: 300% auto; background-color: #d6d4cf; border: 1px solid #d1c9be; box-shadow: 0 3px 12px rgba(56,48,40,.08); filter: saturate(.88) contrast(.98); }
+.lusi-blog-photo { width: 100%; aspect-ratio: 4 / 3; margin: 0 0 26px; background-image: url("./lusi-blog-atlas-v1.png"); background-repeat: no-repeat; background-size: 300% auto; background-color: #d6d4cf; border: 1px solid #d1c9be; box-shadow: 0 3px 12px rgba(56,48,40,.08); filter: saturate(.88) contrast(.98); }
 .lusi-blog-photo-1 { background-position: 0 center; }
 .lusi-blog-photo-2 { background-position: 50% center; }
 .lusi-blog-photo-3 { background-position: 100% center; }
 .lusi-blog-extra-photo { width: min(560px, 100%); aspect-ratio: 4 / 3; margin: 8px auto 27px; background-repeat: no-repeat; background-color: #d6d4cf; border: 1px solid #d1c9be; box-shadow: 0 3px 12px rgba(56,48,40,.08); filter: saturate(.88) contrast(.98); }
-.lusi-cup-photo { background-image: url("./assets/lusi-blog-atlas-v1.png"); background-size: 300% auto; background-position: 50% center; }
-.lusi-cat-photo { background-image: url("./assets/baiyu-post-atlas-v2.png"); background-size: 400% 200%; background-position: 100% 0; }
+.lusi-cup-photo { background-image: url("./lusi-blog-atlas-v1.png"); background-size: 300% auto; background-position: 50% center; }
+.lusi-cat-photo { background-image: url("./baiyu-post-atlas-v2.png"); background-size: 400% 200%; background-position: 100% 0; }
 .blog-entry blockquote { margin: 32px 0 12px; padding: 14px 20px; color: #3c5148; background: #eef3ef; border-left: 3px solid #60796d; }
 .blog-entry footer { margin-top: 38px; padding-top: 20px; border-top: 1px solid #ded7cd; text-align: center; }
 .text-button { padding: 8px 18px; color: #4f655a; background: transparent; border: 1px solid #9aaba2; }
@@ -303,7 +303,7 @@ button { cursor: pointer; }
 .baiyu-card header p em { color: #87918e; font-style: normal; }
 .baiyu-card header > button { color: #89938f; background: transparent; border: 0; }
 .baiyu-text { padding: 8px 16px 14px 68px; font-size: .96rem; }
-.post-photo { width: 100%; aspect-ratio: 1 / 1; background-image: url("./assets/baiyu-post-atlas-v2.png"); background-size: 400% 200%; background-repeat: no-repeat; background-color: #d8ddda; }
+.post-photo { width: 100%; aspect-ratio: 1 / 1; background-image: url("./baiyu-post-atlas-v2.png"); background-size: 400% 200%; background-repeat: no-repeat; background-color: #d8ddda; }
 .atlas.tile-1 { background-position: 0 0; } .atlas.tile-2 { background-position: 33.333% 0; } .atlas.tile-3 { background-position: 66.667% 0; } .atlas.tile-4 { background-position: 100% 0; }
 .atlas.tile-5 { background-position: 0 100%; } .atlas.tile-6 { background-position: 33.333% 100%; } .atlas.tile-7 { background-position: 66.667% 100%; } .atlas.tile-8 { background-position: 100% 100%; }
 .photo-link { display: block; width: min(520px, calc(100% - 84px)); margin: 0 16px 15px 68px; }
@@ -378,8 +378,8 @@ button { cursor: pointer; }
 .takeover-line { height: 1px; margin: 20px 0; background: linear-gradient(90deg, transparent,#8ea5b4,transparent); }
 .takeover-status { color: #879ca9; font-size: .8rem; }
 .takeover-ghosts { position: absolute; inset: -20%; display: grid; grid-template-columns: repeat(4,1fr); align-items: center; opacity: .08; filter: grayscale(1); transform: rotate(-7deg) scale(1.2); }
-.ghost { width: 24vw; height: 24vw; background-image: url("./assets/forum-avatars-v1.png"); background-size: 300% 300%; }
-.ghost.corrupted-face { background-image: url("./assets/lusi-interface-v1.png"); background-size: cover; background-position: center; }
+.ghost { width: 24vw; height: 24vw; background-image: url("./forum-avatars-v1.png"); background-size: 300% 300%; }
+.ghost.corrupted-face { background-image: url("./lusi-interface-v1.png"); background-size: cover; background-position: center; }
 @keyframes takeover-pulse { 0%,42% { transform: translateX(0); opacity: 1; } 43%,58% { transform: translateX(4px); opacity: .35; } 59%,100% { transform: translateX(0); opacity: 1; } }
 @keyframes identity-slip { 0%,70%,100% { transform: translateX(0); opacity: 1; } 72% { transform: translateX(3px); opacity: .62; } 76% { transform: translateX(-2px); opacity: .88; } }
 @keyframes lusi-last-normal { 0%,13%,25%,39% { opacity: 1; transform: translate(0,0); } 16% { transform: translate(5px,-1px); } 19% { transform: translate(-4px,1px); } 30% { transform: translate(-5px,0); } 34% { transform: translate(4px,1px); } 45% { opacity: 1; filter: saturate(.25) contrast(1.5); } 46%,100% { opacity: 0; transform: scale(.94); } }
@@ -422,7 +422,7 @@ button { cursor: pointer; }
 .metrics strong { color: #124a76; font-size: 1.6rem; }
 .metrics span { color: #708391; font-size: .76rem; }
 .memory-strip { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 36px 0; }
-.memory-strip .atlas { aspect-ratio: 1; background-image: url("./assets/baiyu-post-atlas-v2.png"); background-size: 400% 200%; filter: saturate(.6) contrast(.95); }
+.memory-strip .atlas { aspect-ratio: 1; background-image: url("./baiyu-post-atlas-v2.png"); background-size: 400% 200%; filter: saturate(.6) contrast(.95); }
 .severe-line { margin-top: 55px !important; color: #0b2c47; font-size: 1.35rem !important; }
 .invite-letter { max-width: 760px; padding: 45px 52px; border: 1px solid #cfdbe3; box-shadow: 0 16px 55px rgba(9,39,63,.08); font-family: "Songti SC", SimSun,serif; }
 .invite-letter p { font-size: 1.06rem; line-height: 2; }
@@ -625,7 +625,7 @@ button { cursor: pointer; }
 .secondary-link { padding: 7px 14px; border: 1px solid #b9c6cf; background: #fff; }
 .familiar-user { color: #aa4b42 !important; }
 .forum-photo-row { display: grid; grid-template-columns: repeat(2, minmax(0, 230px)); gap: 8px; margin-top: 16px; }
-.xiaoman-atlas { aspect-ratio: 1; background-image: url("./assets/xiaoman-life-atlas-v1.png"); background-size: 200% 200%; background-repeat: no-repeat; background-color: #dde2e5; }
+.xiaoman-atlas { aspect-ratio: 1; background-image: url("./xiaoman-life-atlas-v1.png"); background-size: 200% 200%; background-repeat: no-repeat; background-color: #dde2e5; }
 .xiaoman-tile-1 { background-position: 0 0; }
 .xiaoman-tile-2 { background-position: 100% 0; }
 .xiaoman-tile-3 { background-position: 0 100%; }
@@ -652,7 +652,7 @@ button { cursor: pointer; }
 .album-photo > small { display: block; padding: 0 10px 9px; color: #8a959d; }
 .xiaoman-album-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .xiaoman-album-grid .album-photo { width: 100%; }
-.xiaoman-album-atlas { width: 100%; aspect-ratio: 1; background-image: url("./assets/xiaoman-album-atlas-v1.png"); background-size: 200% 200%; background-repeat: no-repeat; background-color: #d9dcde; }
+.xiaoman-album-atlas { width: 100%; aspect-ratio: 1; background-image: url("./xiaoman-album-atlas-v1.png"); background-size: 200% 200%; background-repeat: no-repeat; background-color: #d9dcde; }
 .xiaoman-album-tile-1 { background-position: 0 0; }
 .xiaoman-album-tile-2 { background-position: 100% 0; }
 .xiaoman-album-tile-3 { background-position: 0 100%; }
