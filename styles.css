@@ -46,6 +46,7 @@ button { cursor: pointer; }
 .network-details > div:last-child { border: 0; }
 .network-details dt { color: #7a858c; }
 .network-details dd { margin: 0; font-family: Consolas, monospace; }
+.network-details .error-code { color: #c52f28; font-size: 1.08rem; letter-spacing: .04em; }
 .network-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .network-actions span { color: #7b858d; font-size: .8rem; }
 .network-return-actions { margin-top: 15px; }
@@ -338,6 +339,8 @@ button { cursor: pointer; }
 .online-box strong { color: var(--baiyu); font-size: 1.65rem; }
 .online-box span { color: #71807a; font-size: .8rem; }
 .online-box small { width: 100%; color: #9aa39f; font-size: .68rem; }
+.baiyu-back-top { position: fixed; left: 22px; bottom: 22px; z-index: 12; min-width: 108px; padding: 11px 16px; color: #557168; background: rgba(255,255,255,.9); border: 1px solid #cfdad6; border-radius: 5px; box-shadow: 0 5px 18px rgba(36,66,58,.1); font-size: .8rem; backdrop-filter: blur(4px); }
+.baiyu-back-top:hover { color: #2f5d50; background: #fff; border-color: #afc2bb; }
 .baiyu-footer { padding: 22px 16px 40px; color: #82908b; text-align: center; font-size: .72rem; }
 .baiyu-search-note { display: flex; justify-content: space-between; margin-bottom: 12px; padding: 12px 15px; background: #fff; border: 1px solid #d4dedb; font-size: .82rem; }
 .no-results { padding: 50px; color: #85928d; background: #fff; border: 1px solid #d4dedb; text-align: center; }
@@ -623,7 +626,6 @@ button { cursor: pointer; }
 /* Xiaoman branch: familiar forum, private messages and campus cloud */
 .campus-user .inbox-link { color: #9c3b34; font-weight: 600; }
 .secondary-link { padding: 7px 14px; border: 1px solid #b9c6cf; background: #fff; }
-.familiar-user { color: #aa4b42 !important; }
 .forum-photo-row { display: grid; grid-template-columns: repeat(2, minmax(0, 230px)); gap: 8px; margin-top: 16px; }
 .xiaoman-atlas { aspect-ratio: 1; background-image: url("./xiaoman-life-atlas-v1.webp"); background-size: 200% 200%; background-repeat: no-repeat; background-color: #dde2e5; }
 .xiaoman-tile-1 { background-position: 0 0; }
@@ -736,7 +738,9 @@ button { cursor: pointer; }
 .cloud-sensitive .cloud-preview pre { color: #203c37; background: linear-gradient(180deg, #f9fcfb, #f0f6f3); animation: cloud-data-flicker 2.8s steps(2,end) 1; }
 .cloud-sensitive .cloud-preview::after { content: ""; position: absolute; inset: 56px 0 0; pointer-events: none; opacity: .12; background: repeating-linear-gradient(180deg, transparent 0, transparent 3px, rgba(38,91,80,.08) 4px); mix-blend-mode: multiply; }
 .cloud-toast { min-height: 20px; margin: 8px 0 0; color: #71827d; text-align: right; font-size: .72rem; }
+.cloud-complete-notice { position: fixed; left: 50%; top: 50%; z-index: 20; padding: 16px 28px; color: rgba(255,255,255,.92); background: rgba(29,43,49,.72); border: 1px solid rgba(255,255,255,.16); border-radius: 4px; box-shadow: 0 12px 40px rgba(19,34,40,.2); font-size: 1rem; letter-spacing: .08em; pointer-events: none; transform: translate(-50%,-50%); animation: cloud-complete-hint 2.8s ease both; backdrop-filter: blur(3px); }
 @keyframes cloud-data-flicker { 0%,18%,21%,100% { opacity: 1; transform: translateX(0); } 19% { opacity: .72; transform: translateX(1px); } 20% { opacity: .9; transform: translateX(-1px); } }
+@keyframes cloud-complete-hint { 0% { opacity: 0; transform: translate(-50%,-46%); } 14%,76% { opacity: 1; transform: translate(-50%,-50%); } 100% { opacity: 0; transform: translate(-50%,-54%); } }
 .cloud-empty, .cloud-unavailable { min-height: 590px; display: grid; place-content: center; justify-items: center; color: #8a959d; text-align: center; }
 .cloud-empty > span { font-size: 2.7rem; opacity: .3; }
 .cloud-unavailable > span { width: 54px; height: 54px; display: grid; place-items: center; color: #fff; background: #71889b; border-radius: 6px; font-weight: 700; }
@@ -857,6 +861,7 @@ button { cursor: pointer; }
   .baiyu-text { padding-left: 16px; }
   .photo-link, .video-thumb, .meme { width: calc(100% - 32px); margin-left: 16px; }
   .baiyu-side { display: block; }
+  .baiyu-back-top { left: 12px; bottom: 12px; min-width: 96px; }
   .company-hero { padding: 52px 24px; }
   .company-services, .metrics, .ending-metrics { grid-template-columns: 1fr; }
   .company-services article { border-right: 0; border-bottom: 1px solid #e0e6ea; }

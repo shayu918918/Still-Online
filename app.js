@@ -3,6 +3,60 @@
 
   const app = document.querySelector("#app");
   const STORAGE_KEY = "still-one-online-v5-branch";
+  const ASSET_BASE = document.querySelector('meta[name="asset-base"]')?.content || "./";
+  const ASSET_PRELOAD_SEQUENCE = [
+    "forum-avatars-v1.webp",
+    "baiyu-avatars-v3.webp",
+    "xiaoman-life-atlas-v1.webp",
+    "xiaoman-album-atlas-v1.webp",
+    "lusi-blog-atlas-v1.webp",
+    "baiyu-post-atlas-v2.webp",
+    "lusi-interface-v1.webp",
+    "xiaoman-case-9804.jpg",
+  ];
+  const preloadedImages = new Set();
+  let imagePreloadStarted = false;
+
+  function assetPath(filename) {
+    return new URL(filename, new URL(ASSET_BASE, document.baseURI)).href;
+  }
+
+  function preloadImage(filename) {
+    if (preloadedImages.has(filename)) return Promise.resolve();
+    return new Promise((resolve) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.fetchPriority = "low";
+      const finish = () => {
+        preloadedImages.add(filename);
+        resolve();
+      };
+      image.addEventListener("load", async () => {
+        try { await image.decode(); } catch (_) { /* decoded by the browser where supported */ }
+        finish();
+      }, { once: true });
+      image.addEventListener("error", finish, { once: true });
+      image.src = assetPath(filename);
+    });
+  }
+
+  function scheduleOrderedImagePreload() {
+    if (imagePreloadStarted) return;
+    imagePreloadStarted = true;
+    const runQueue = async () => {
+      for (const filename of ASSET_PRELOAD_SEQUENCE) {
+        await preloadImage(filename);
+        await new Promise((resolve) => window.setTimeout(resolve, 80));
+      }
+      document.documentElement.dataset.imagesPreloaded = "true";
+    };
+    const startWhenIdle = () => {
+      if ("requestIdleCallback" in window) window.requestIdleCallback(runQueue, { timeout: 1200 });
+      else window.setTimeout(runQueue, 250);
+    };
+    if (document.readyState === "complete") startWhenIdle();
+    else window.addEventListener("load", startWhenIdle, { once: true });
+  }
   const PAGE_STEPS = [
     ["network"],
     ["forum-home"],
@@ -32,6 +86,7 @@
     forumSettingsSaved: false,
     inboxUnread: 1,
     pmUnread: { xiaoman: 1, lusi: 0, dousha: 0 },
+    inboxVersion: 0,
     decoyTitle: "",
     unlocked: [],
     readLogs: [],
@@ -44,6 +99,8 @@
     cloudSaved: false,
     cloudFolder: "root",
     cloudFile: "",
+    cloudReadFiles: [],
+    cloudCompleteNotice: false,
     xiaomanChatStage: 0,
     xiaomanChatWaiting: 0,
     xiaomanUserMessages: [],
@@ -51,6 +108,7 @@
     doushaUserMessages: [],
     lusiPmStage: 0,
     lusiPmWaiting: false,
+    lusiInviteWaiting: false,
     lusiPmUserMessages: [],
     chatMode: "none",
     chatOpen: false,
@@ -99,9 +157,20 @@
         ? { ...initialState.pmUnread, ...saved.pmUnread }
         : (saved.lusiPmStage ? { xiaoman: 0, lusi: Number(saved.inboxUnread) || 0, dousha: 0 } : { ...initialState.pmUnread });
       merged.inboxUnread = Object.values(merged.pmUnread).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+      if (!Array.isArray(merged.cloudReadFiles)) merged.cloudReadFiles = [];
+      if (merged.networkFixed && Number(saved.inboxVersion) < 2) {
+        merged.pmContact = "dousha";
+        merged.pmUnread = { dousha: 0, xiaoman: 2, lusi: 1 };
+        merged.inboxUnread = 3;
+        merged.inboxVersion = 2;
+      }
       if (merged.lusiPmWaiting || Number(merged.lusiPmStage) === 2) {
         merged.lusiPmWaiting = false;
         merged.lusiPmStage = 3;
+      }
+      if (merged.lusiInviteWaiting) {
+        merged.lusiInviteWaiting = false;
+        merged.lusiPmStage = Math.max(4, Number(merged.lusiPmStage) || 0);
       }
       if (Number(merged.xiaomanChatWaiting) > 0) {
         merged.xiaomanChatStage = Math.max(Number(merged.xiaomanChatStage) || 0, Number(merged.xiaomanChatWaiting));
@@ -115,6 +184,7 @@
         merged.page = "takeover";
         merged.lusiCorrupted = true;
       }
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch (_) { /* no-op */ }
       return merged;
     } catch (_) {
       return { ...initialState };
@@ -293,16 +363,16 @@
   function campusHeader(active = "") {
     const unread = getPmUnread();
     const inboxLabel = unread ? `私信（${unread}）` : "私信";
-    const inboxRoute = state.lusiPmStage ? "lusi-messages" : "xiaoman-messages";
-    const navItems = [["home", "首页"], ["campus", "校园生活"], ["study", "学习交流"], ["lost", "失物招领"], ["market", "二手市场"], ["settings", "设置"]];
+    const inboxRoute = "xiaoman-messages";
+    const navItems = [["home", "首页"], ["campus", "校园生活"], ["study", "学习交流"], ["lost", "失物招领"], ["settings", "设置"]];
     return `<div class="campus-topline"></div>
       <header class="campus-header"><div class="campus-header-inner">
         <a href="#" class="campus-brand" data-forum-section="home"><span class="campus-seal">梧</span><span><b>梧桐大学校园服务中心</b><small>WUTONG UNIVERSITY CAMPUS SERVICE</small></span></a>
-        <div class="campus-user">12,483人在线　访客　<a class="auth-service-link" href="#" data-route="network">统一身份认证服务</a>　<a class="inbox-link" href="#" data-route="${inboxRoute}">${inboxLabel}</a>　<a href="#" data-forum-section="settings">设置</a></div>
+        <div class="campus-user">12,483人在线　访客　<a class="auth-service-link" href="#" data-route="network">统一身份认证服务</a>　<a class="inbox-link" href="#" data-route="${inboxRoute}" data-pm-contact="dousha">${inboxLabel}</a>　<a href="#" data-forum-section="settings">设置</a></div>
       </div></header>
-      <div class="campus-mobile-actions"><a class="auth-service-link" href="#" data-route="network">统一身份认证服务</a><a class="inbox-link" href="#" data-route="${inboxRoute}">${inboxLabel}</a></div>
+      <div class="campus-mobile-actions"><a class="auth-service-link" href="#" data-route="network">统一身份认证服务</a><a class="inbox-link" href="#" data-route="${inboxRoute}" data-pm-contact="dousha">${inboxLabel}</a></div>
       <nav class="campus-nav"><div>${navItems.map(([id, label]) => `<a class="${active === id ? "active" : ""} ${id === "settings" ? "nav-settings" : ""}" href="#" data-forum-section="${id}">${label}</a>`).join("")}</div></nav>
-      <div class="campus-search-dock"><form data-campus-global-search><label class="sr-only" for="campus-global-q">搜索校内服务</label><input id="campus-global-q" name="q" value="${esc(state.forumQuery)}" placeholder="搜索校内服务、帖子或错误代码" autocomplete="off"><button>搜索</button></form></div>`;
+      <div class="campus-search-dock"><form data-campus-global-search><label class="sr-only" for="campus-global-q">搜索校内服务</label><input id="campus-global-q" name="q" value="${esc(state.forumQuery)}" placeholder="搜索错误代码、帖子、校内服务" autocomplete="off"><button>搜索</button></form></div>`;
   }
 
   function campusFooter() {
@@ -317,9 +387,9 @@
     const body = state.networkFixed ? `
       <div class="network-status success"><span>✓</span><div><h1>校园网认证成功</h1><p>当前设备已连接互联网。</p></div></div>
       <dl class="network-details"><div><dt>连接状态</dt><dd>CONNECTED</dd></div><div><dt>认证节点</dt><dd>NORTH-DORM-07</dd></div><div><dt>设备名称</dt><dd>WT-BOOK-23</dd></div></dl>
-      <div class="network-actions"><a class="primary-button" href="#" data-route="${returnPage || "campus-thread"}">${returnLabel || "返回刚才的帖子"}</a><a class="secondary-link" href="#" data-route="lusi-messages">${getPmUnread() ? `私信（${getPmUnread()}）` : "私信"}</a></div>` : `
+      <div class="network-actions"><a class="primary-button" href="#" data-route="${returnPage || "campus-thread"}">${returnLabel || "返回刚才的帖子"}</a><a class="secondary-link" href="#" data-route="xiaoman-messages" data-pm-contact="dousha">${getPmUnread() ? `私信（${getPmUnread()}）` : "私信"}</a></div>` : `
       <div class="network-status failure"><span>!</span><div><h1>无法完成校园网认证</h1><p>当前设备未能通过统一身份认证，暂时无法访问互联网。校内服务仍可使用。</p></div></div>
-      <dl class="network-details"><div><dt>连接状态</dt><dd>AUTH_FAILED</dd></div><div><dt>错误代码</dt><dd><strong>E403</strong></dd></div><div><dt>认证节点</dt><dd>NORTH-DORM-07</dd></div><div><dt>发生时间</dt><dd>${new Date().toLocaleString("zh-CN", { hour12: false })}</dd></div></dl>
+      <dl class="network-details"><div><dt>连接状态</dt><dd>AUTH_FAILED</dd></div><div><dt>错误代码</dt><dd><strong class="error-code">E403</strong></dd></div><div><dt>认证节点</dt><dd>NORTH-DORM-07</dd></div><div><dt>发生时间</dt><dd>${new Date().toLocaleString("zh-CN", { hour12: false })}</dd></div></dl>
       ${state.fixKnown ? `<form id="auth-form" class="auth-form"><label for="device-name">设备名称</label><div><input id="device-name" name="device" value="${esc(state.deviceName)}" autocomplete="off"><button type="submit">重新认证</button></div><p id="auth-note">请确认设备名称后重新连接。</p></form><div class="network-actions network-return-actions">${returnLink}</div>` : `<div class="network-actions"><a class="primary-button" href="#" data-route="forum-home">校内服务</a>${returnLink}<span>信息化中心值班电话：6403-2190</span></div>`}`;
 
     app.innerHTML = `${sessionTools()}<div class="network-page"><header><div><strong>梧桐大学校园网络</strong><span>统一身份认证服务</span></div></header><main><section class="network-card"><div class="card-title">网络连接</div><div class="network-body">${body}</div></section></main></div>`;
@@ -331,8 +401,11 @@
       if (value === "WT-BOOK-23") {
         state.networkFixed = true;
         state.lusiPmStage = Math.max(1, Number(state.lusiPmStage) || 0);
-        state.pmContact = "lusi";
+        state.pmContact = "dousha";
+        state.inboxVersion = 2;
+        setPmUnread("xiaoman", 2);
         setPmUnread("lusi", 1);
+        setPmUnread("dousha", 0);
         saveState();
         renderNetwork();
       } else {
@@ -348,33 +421,19 @@
       home: { label: "服务中心首页", title: "今日信息", stat: "今日更新：328　累计主题：64,102", rows: [
         ["关于北区宿舍网络认证维护的通知", "校园公告", "今天 20:30", 0],
         ["东门食堂二楼窗口换位置了吗", "校园生活", "今天 18:42", 12],
-        ["求借一本《数字信号处理》第四版", "学习交流", "今天 17:09", 3],
         ["北区捡到一串钥匙，挂着蓝色门禁扣", "失物招领", "今天 15:26", 7],
-        ["出九成新折叠桌，北七自提", "二手市场", "今天 13:51", 5],
       ]},
       campus: { label: "校园生活", title: "校园生活", stat: "今日新帖：86　在线：3,214", rows: [
         ["东门食堂二楼窗口换位置了吗", "食堂与生活", "今天 18:42", 12],
-        ["南湖现在还有那种脚踏船吗", "校内活动", "今天 17:55", 9],
         ["北七楼下那只橘猫有人喂过吗", "宿舍区", "今天 16:20", 18],
-        ["操场今晚是不是有社团彩排", "校园活动", "今天 14:03", 6],
       ]},
       study: { label: "学习交流", title: "学习交流", stat: "今日新帖：41　资料帖：8,731", rows: [
         ["求借一本《数字信号处理》第四版", "教材求助", "今天 17:09", 3],
-        ["一教302今晚有人上课吗", "自习信息", "今天 16:41", 5],
-        ["选修课《影像文化》期末形式", "课程交流", "今天 12:28", 14],
         ["图书馆数据库校外访问方法", "资料共享", "昨天 22:16", 21],
       ]},
       lost: { label: "失物招领", title: "失物招领", stat: "待认领：27　今日归还：11", rows: [
         ["北区捡到一串钥匙，挂着蓝色门禁扣", "北七门口", "今天 15:26", 7],
         ["三食堂饭卡，尾号0719", "三食堂", "今天 13:08", 2],
-        ["寻黑色折叠伞，伞柄贴了白胶布", "图书馆", "今天 10:34", 4],
-        ["捡到计算器一台，二教门口", "第二教学楼", "昨天 19:47", 6],
-      ]},
-      market: { label: "二手市场", title: "二手市场", stat: "今日发布：63　交易中：214", rows: [
-        ["出九成新折叠桌，北七自提", "宿舍用品", "今天 13:51", 5],
-        ["收一盏夹床头的小台灯", "求购", "今天 12:14", 8],
-        ["毕业出书架、衣架和收纳箱", "毕业清仓", "今天 09:22", 16],
-        ["出24寸显示器，已过保", "数码产品", "昨天 23:06", 11],
       ]},
     };
     document.title = `${section === "settings" ? "设置" : (boards[section]?.label || "首页")} - 梧桐大学校园服务中心`;
@@ -403,7 +462,7 @@
   function renderForumSearch() {
     document.title = "搜索 - 梧桐大学校园服务中心";
     const results = searchResults(state.forumQuery);
-    const content = !state.forumQuery ? `<p class="search-empty">请输入关键词或错误代码。</p>` : results.length ? `<p class="search-count">找到约 ${results.length} 条与“${esc(state.forumQuery)}”相关的内容</p><section class="search-results">${results.map((r) => `<article><a href="#" class="${r[3] === "xiaoman-router" ? "familiar-user" : ""}" ${r[3] === true ? `data-route="campus-thread"` : r[3] === "xiaoman-router" ? `data-route="xiaoman-router"` : `data-action="decoy" data-title="${esc(r[0])}"`}>${r[0]}</a><small>${r[1]}</small><p>${r[2].replace(/E403/gi, "<mark>E403</mark>")}</p></article>`).join("")}</section>` : `<p class="search-empty">没有找到与“${esc(state.forumQuery)}”相关的内容。</p>`;
+    const content = !state.forumQuery ? `<p class="search-empty">请输入关键词或错误代码。</p>` : results.length ? `<p class="search-count">找到约 ${results.length} 条与“${esc(state.forumQuery)}”相关的内容</p><section class="search-results">${results.map((r) => `<article><a href="#" ${r[3] === true ? `data-route="campus-thread"` : r[3] === "xiaoman-router" ? `data-route="xiaoman-router"` : `data-action="decoy" data-title="${esc(r[0])}"`}>${r[0]}</a><small>${r[1]}</small><p>${r[2].replace(/E403/gi, "<mark>E403</mark>")}</p></article>`).join("")}</section>` : `<p class="search-empty">没有找到与“${esc(state.forumQuery)}”相关的内容。</p>`;
     app.innerHTML = `${sessionTools()}<div class="campus-shell">${campusHeader()}<main class="campus-content"><p class="crumb"><a href="#" data-forum-section="home">服务中心首页</a> &gt; 站内搜索</p>${content}</main>${campusFooter()}</div>`;
   }
 
@@ -562,6 +621,13 @@
     return maps[folder] || maps.root;
   }
 
+  function cloudRequiredTextFiles() {
+    const folders = ["root", "数据", "生成", "回复草稿", "重要节点"];
+    return [...new Set(folders.flatMap((folder) => cloudEntries(folder))
+      .filter(([type, name]) => type === "file" && !name.endsWith(".pt"))
+      .map(([, name]) => name))];
+  }
+
   function cloudViewEntries(view) {
     if (view === "recent") return [["file", "后台任务_0916.log", "9 KB · 刚刚"], ["file", "关系连续性评估.txt", "4 KB · 今天 22:57"], ["file", "聊天记录_全量.jsonl", "91.3 MB · 今天 23:05"], ["file", "账户与设备.txt", "1 KB · 今天 23:05"]];
     if (view === "trash") return [["file", "称呼测试_旧.txt", "2 KB · 删除于 2026-09-08"], ["file", "第一次见面_v1.txt", "1 KB · 删除于 2026-09-07"]];
@@ -608,7 +674,8 @@
       const fileType = type === "folder" ? "▰" : name.endsWith(".pt") ? "PT" : name.endsWith(".json") || name.endsWith(".jsonl") ? "{}" : name.endsWith(".csv") ? "CSV" : name.endsWith(".log") ? "LOG" : "TXT";
       return `<button class="file-row ${state.cloudFile === name ? "selected" : ""}" type="button" ${type === "folder" ? `data-cloud-folder="${name}"` : `data-cloud-file="${name}"`}><span class="file-icon ${type}">${fileType}</span><span><b>${esc(name)}</b><small>${type === "folder" ? "文件夹" : esc(meta)}</small></span></button>`;
     }).join("");
-    app.innerHTML = `${sessionTools()}<div class="cloud-page cloud-unlocked ${sensitive ? "cloud-sensitive" : ""}"><header class="cloud-header"><a href="#" class="cloud-brand" data-cloud-view="share"><span>梧</span><b>梧桐云盘</b></a><nav><a href="#" data-route="xiaoman-profile">返回论坛</a>　<a href="#" data-cloud-download>客户端下载</a>　<a href="#" data-cloud-help>帮助中心</a></nav></header><main class="cloud-workspace"><aside><a class="${view === "share" ? "active" : ""}" href="#" data-cloud-view="share">分享文件</a><a class="${view === "recent" ? "active" : ""}" href="#" data-cloud-view="recent">最近访问</a><a class="${view === "trash" ? "active" : ""}" href="#" data-cloud-view="trash">回收站</a><div class="cloud-storage"><span>已使用 6.1 GB / 20 GB</span><i><b></b></i><small>同步状态：实时</small></div></aside><section class="cloud-browser"><div class="cloud-toolbar"><div><b>${heading}</b><span>${subheading}</span></div>${view === "share" ? `<button type="button" data-cloud-save>${state.cloudSaved ? "已保存" : "保存到我的云盘"}</button>` : ""}</div><div class="cloud-path">${path}</div><div class="cloud-columns"><div class="cloud-files">${view === "share" && folder !== "root" ? `<button class="cloud-back" type="button" data-cloud-folder="${cloudParent(folder)}">← 返回上一级</button>` : ""}<div class="file-head"><span>文件名</span><span>大小 / 修改时间</span></div>${rows}</div><section class="cloud-preview">${preview}</section></div><p class="cloud-toast" id="cloud-toast" aria-live="polite"></p></section></main><footer class="cloud-footer">© 2018—2026 梧桐大学信息化中心　服务状态：正常　文件传输已加密</footer></div>`;
+    const completeNotice = state.cloudCompleteNotice ? `<div class="cloud-complete-notice" role="status">这里已经没有新内容了</div>` : "";
+    app.innerHTML = `${sessionTools()}<div class="cloud-page cloud-unlocked ${sensitive ? "cloud-sensitive" : ""}"><header class="cloud-header"><a href="#" class="cloud-brand" data-cloud-view="share"><span>梧</span><b>梧桐云盘</b></a><nav><a href="#" data-route="xiaoman-profile">返回论坛</a>　<a href="#" data-cloud-download>客户端下载</a>　<a href="#" data-cloud-help>帮助中心</a></nav></header><main class="cloud-workspace"><aside><a class="${view === "share" ? "active" : ""}" href="#" data-cloud-view="share">分享文件</a><a class="${view === "recent" ? "active" : ""}" href="#" data-cloud-view="recent">最近访问</a><a class="${view === "trash" ? "active" : ""}" href="#" data-cloud-view="trash">回收站</a><div class="cloud-storage"><span>已使用 6.1 GB / 20 GB</span><i><b></b></i><small>同步状态：实时</small></div></aside><section class="cloud-browser"><div class="cloud-toolbar"><div><b>${heading}</b><span>${subheading}</span></div>${view === "share" ? `<button type="button" data-cloud-save>${state.cloudSaved ? "已保存" : "保存到我的云盘"}</button>` : ""}</div><div class="cloud-path">${path}</div><div class="cloud-columns"><div class="cloud-files">${view === "share" && folder !== "root" ? `<button class="cloud-back" type="button" data-cloud-folder="${cloudParent(folder)}">← 返回上一级</button>` : ""}<div class="file-head"><span>文件名</span><span>大小 / 修改时间</span></div>${rows}</div><section class="cloud-preview">${preview}</section></div><p class="cloud-toast" id="cloud-toast" aria-live="polite"></p></section></main><footer class="cloud-footer">© 2018—2026 梧桐大学信息化中心　服务状态：正常　文件传输已加密</footer>${completeNotice}</div>`;
     document.querySelectorAll("[data-cloud-view]").forEach((el) => el.addEventListener("click", (event) => {
       event.preventDefault();
       state.cloudView = event.currentTarget.dataset.cloudView;
@@ -626,9 +693,24 @@
       renderCloud();
     }));
     document.querySelectorAll("[data-cloud-file]").forEach((el) => el.addEventListener("click", () => {
-      state.cloudFile = el.dataset.cloudFile;
+      const filename = el.dataset.cloudFile;
+      state.cloudFile = filename;
+      const requiredFiles = cloudRequiredTextFiles();
+      const wasComplete = requiredFiles.every((name) => state.cloudReadFiles.includes(name));
+      if (!filename.endsWith(".pt") && !state.cloudReadFiles.includes(filename)) {
+        state.cloudReadFiles.push(filename);
+      }
+      if (!wasComplete && requiredFiles.every((name) => state.cloudReadFiles.includes(name))) state.cloudCompleteNotice = true;
       saveState();
       renderCloud();
+      if (state.cloudCompleteNotice) {
+        window.setTimeout(() => {
+          if (!state.cloudCompleteNotice) return;
+          state.cloudCompleteNotice = false;
+          saveState();
+          if (state.page === "cloud") renderCloud();
+        }, 2800);
+      }
     }));
     document.querySelector("[data-cloud-save]")?.addEventListener("click", () => {
       state.cloudSaved = true;
@@ -691,15 +773,18 @@
     let lusiThread = `<div class="pm-context">普通站内私信</div><div class="pm-day">今天 22:51</div><div class="pm-bubble incoming"><p>连接上了吗</p><time>22:51</time></div>`;
     if (lusiUserMessages.length) lusiThread += `<div class="pm-bubble outgoing"><p>${esc(lusiUserMessages[0])}</p><time>22:52</time></div>`;
     if (state.lusiPmStage >= 3) lusiThread += `<div class="pm-bubble incoming"><p>那就好</p><time>22:52</time></div>`;
-    if (state.lusiPmWaiting) lusiThread += `<div class="pm-typing">对方正在输入<span>...</span></div>`;
+    if (state.lusiPmStage >= 4) lusiThread += `<div class="pm-bubble incoming"><p>看你主页，你也是解密爱好者吗？要不要试着来我主页看看</p><time>22:53</time></div>`;
+    if (state.lusiPmWaiting || state.lusiInviteWaiting) lusiThread += `<div class="pm-typing">对方正在输入<span>...</span></div>`;
     const lusiDisabled = state.lusiPmWaiting || state.lusiPmStage >= 2;
     const lusiConversation = `<section class="pm-conversation"><header><a class="pm-avatar-link" href="#" data-route="lusi-profile" aria-label="查看鹭鸶的个人主页">${avatar("LUSI_17", true)}</a><div><a class="pm-name-link" href="#" data-route="lusi-profile">鹭鸶 <span class="pm-profile-entry">个人主页</span></a><small>在线　·　@LUSI_17</small></div></header><div class="pm-history">${lusiThread}</div><form id="lusi-message-form"><textarea name="message" aria-label="回复鹭鸶" placeholder="${state.lusiPmStage >= 2 ? "" : "回复鹭鸶……"}" ${lusiDisabled ? "disabled" : ""}></textarea><div><span>${state.lusiPmWaiting ? "等待对方回复……" : state.lusiPmStage >= 3 ? "已读" : "按 Ctrl + Enter 发送"}</span><button ${lusiDisabled ? "disabled" : ""}>发送</button></div></form></section>`;
     const xiaomanConversation = `<section class="pm-conversation"><header><a class="pm-avatar-link" href="#" data-route="xiaoman-profile" aria-label="查看小满的个人主页">${avatar("小满", true)}</a><div><a class="pm-name-link" href="#" data-route="xiaoman-profile">小满 <span class="pm-friend">（你的好友）</span> <span class="pm-profile-entry">个人主页</span></a><small>在线　·　@XIAOMAN_21</small></div></header><div class="pm-history">${thread}</div><form id="xiaoman-message-form"><textarea name="message" aria-label="回复小满" placeholder="${xiaomanPlaceholder}" ${xiaomanDisabled ? "disabled" : ""}></textarea><div><span>${xiaomanHelper}</span><button ${xiaomanDisabled ? "disabled" : ""}>发送</button></div></form></section>`;
     const doushaConversation = `<section class="pm-conversation"><header>${avatar("豆沙包不要馅", true)}<div><b>豆沙包不要馅</b><small>昨天在线</small></div></header><div class="pm-history">${doushaThread}</div><form id="dousha-message-form"><textarea name="message" aria-label="回复豆沙包不要馅" placeholder="回复豆沙包不要馅……"></textarea><div><span>按 Ctrl + Enter 发送</span><button>发送</button></div></form></section>`;
     const conversation = contact === "lusi" ? lusiConversation : contact === "xiaoman" ? xiaomanConversation : doushaConversation;
-    const lusiPreview = state.lusiPmStage >= 3 ? "那就好" : state.lusiPmStage >= 2 ? (lusiUserMessages[0] || "连接上了") : "连接上了吗";
+    const lusiPreview = state.lusiPmStage >= 4 ? "要不要试着来我主页看看" : state.lusiPmStage >= 3 ? "那就好" : state.lusiPmStage >= 2 ? (lusiUserMessages[0] || "连接上了") : "连接上了吗";
+    const xiaomanPreview = state.ending ? "今天过得怎么样？" : state.xiaomanChatStage >= 2 ? "快休息吧，晚安宝宝" : state.xiaomanChatStage >= 1 ? "刚做完实验。这么晚还不睡？" : state.networkFixed ? "看到你重新上线了……" : "我帮你查查。";
+    const xiaomanPreviewTime = state.ending ? "刚刚" : state.xiaomanChatStage >= 2 ? "23:05" : state.xiaomanChatStage >= 1 ? "23:02" : state.networkFixed ? "22:50" : "22:40";
     const unreadBadge = (name) => getPmUnread(name) ? `<i class="pm-list-unread" aria-label="${getPmUnread(name)}条未读消息">${getPmUnread(name)}</i>` : "";
-    app.innerHTML = `${sessionTools()}<div class="campus-shell">${campusHeader()}<main class="campus-content pm-page"><p class="crumb"><a href="#" data-forum-section="home">← 返回服务中心首页</a>　&gt; 私信</p><div class="pm-layout"><aside><h1>私信</h1><button type="button" class="${contact === "xiaoman" ? "active" : ""}" data-pm-contact="xiaoman">${avatar("小满", true)}<span><b>小满 <em>好友</em></b><small>${state.ending ? "今天过得怎么样？" : state.networkFixed ? "看到你重新上线了……" : "我帮你查查。"}</small></span><time>${state.ending ? "刚刚" : state.networkFixed ? "22:50" : "22:40"}</time>${unreadBadge("xiaoman")}</button>${state.lusiPmStage ? `<button type="button" class="${contact === "lusi" ? "active" : ""}" data-pm-contact="lusi">${avatar("LUSI_17", true)}<span><b>鹭鸶</b><small>${esc(lusiPreview)}</small></span><time>22:52</time>${unreadBadge("lusi")}</button>` : ""}<button type="button" class="${contact === "dousha" ? "active" : ""}" data-pm-contact="dousha">${avatar("豆沙包不要馅", true)}<span><b>豆沙包不要馅</b><small>最近好多人又开始用校园主页了……</small></span><time>昨天</time>${unreadBadge("dousha")}</button></aside>${conversation}</div></main>${campusFooter()}</div>`;
+    app.innerHTML = `${sessionTools()}<div class="campus-shell">${campusHeader()}<main class="campus-content pm-page"><p class="crumb"><a href="#" data-forum-section="home">← 返回服务中心首页</a>　&gt; 私信</p><div class="pm-layout"><aside><h1>私信</h1><button type="button" class="${contact === "dousha" ? "active" : ""}" data-pm-contact="dousha">${avatar("豆沙包不要馅", true)}<span><b>豆沙包不要馅</b><small>最近好多人又开始用校园主页了……</small></span><time>昨天</time>${unreadBadge("dousha")}</button><button type="button" class="${contact === "xiaoman" ? "active" : ""}" data-pm-contact="xiaoman">${avatar("小满", true)}<span><b>小满 <em>好友</em></b><small>${esc(xiaomanPreview)}</small></span><time>${xiaomanPreviewTime}</time>${unreadBadge("xiaoman")}</button>${state.lusiPmStage ? `<button type="button" class="${contact === "lusi" ? "active" : ""}" data-pm-contact="lusi">${avatar("LUSI_17", true)}<span><b>鹭鸶</b><small>${esc(lusiPreview)}</small></span><time>22:52</time>${unreadBadge("lusi")}</button>` : ""}</aside>${conversation}</div></main>${campusFooter()}</div>`;
     document.querySelectorAll("[data-pm-contact]").forEach((button) => button.addEventListener("click", () => {
       state.pmContact = button.dataset.pmContact;
       saveState();
@@ -717,9 +802,18 @@
       window.setTimeout(() => {
         state.lusiPmStage = 3;
         state.lusiPmWaiting = false;
+        state.lusiInviteWaiting = true;
         if (!(["lusi-messages", "xiaoman-messages"].includes(state.page) && state.pmContact === "lusi")) setPmUnread("lusi", 1);
         saveState();
         if ((state.page === "lusi-messages" || state.page === "xiaoman-messages") && state.pmContact === "lusi") renderXiaomanMessages();
+        window.setTimeout(() => {
+          if (!state.lusiInviteWaiting || state.lusiPmStage >= 4) return;
+          state.lusiInviteWaiting = false;
+          state.lusiPmStage = 4;
+          if (!(["lusi-messages", "xiaoman-messages"].includes(state.page) && state.pmContact === "lusi")) setPmUnread("lusi", Math.max(1, getPmUnread("lusi")));
+          saveState();
+          if ((state.page === "lusi-messages" || state.page === "xiaoman-messages") && state.pmContact === "lusi") renderXiaomanMessages();
+        }, 2200);
       }, 1500);
     });
     document.querySelector("#xiaoman-message-form")?.addEventListener("submit", (event) => {
@@ -773,7 +867,7 @@
       ],
     },
     lab: {
-      title: "实验室下午四点半", date: "2019年9月18日　星期三　小雨", views: "26", passwords: ["回声", "回音"], hint: "对着山谷说话，它会把你的声音送回来。", photo: 2,
+      title: "实验室下午四点半", date: "2019年9月18日　星期三　小雨", views: "26", passwords: ["回声", "回音"], hint: "我对着山谷说话，山谷回复了我两个字。", photo: 2,
       body: [
         "研二真是很累啊，今天又被导师训了。",
         "四点半以后实验室很安静。我本来想趁这会儿写完一段，结果窗台来了一只橘猫，盯着我的绿色杯子看了半天。",
@@ -889,16 +983,16 @@
     { id: "LIT18A", code: "ARTIFIC", user: "门锁又坏了", time: "2018-12-12 23:09", place: "西安", text: "出差回来门锁又坏，在楼下吹了半小时等师傅。回来的时候，楼道里的灯刚好亮了。三楼那个鞋柜怎么还在外面。", likes: 5, comments: ["我们楼的声控灯天一冷也这样"], commenters: ["住在四楼"] },
     { id: "QUILT1", user: "南窗晒被子", time: "昨天 16:18", place: "成都", text: "天气预报说晴，刚把被子搭出去就下雨，十分钟又停。现在三把椅子各晾一个角，今晚先睡沙发吧。", likes: 44, comments: ["我家阳台刚经历同款", "成都人不要信全天晴"], commenters: ["栗子烧鸡", "未读消息"] },
     { id: "D0RM88", user: "带走纸箱谢谢", time: "2天前 16:02", place: "梧州", text: "搬寝室前：两个箱子够了。收拾三个小时后：谁有车救一下。多的一袋衣架放六号楼门口了，要的自己拿。", tile: 8, likes: 124, comments: ["床底真的会长东西", "衣架还有吗我晚点去"], commenters: ["土豆要削皮", "晚点再下楼"] },
-    { id: "CUP21B", code: "AL_INTELLI", user: "九点下班", time: "2021-04-17 21:06", place: "广州", text: "加班到九点，去茶水间找咖啡，在柜子最里面翻到刚入职时买的搪瓷杯。居然还在，而且洗得干干净净倒扣着。问了一圈，没人承认动过。", tile: 2, likes: 8, comments: ["大概率是保洁阿姨顺手洗的吧", "等等，这个杯口的缺角怎么这么眼熟"], commenters: ["改完就走", "星期六有雨"], edited: "编辑于今天 22:53" },
+    { id: "CUP21B", code: "IAL_INTELLI", user: "九点下班", time: "2021-04-17 21:06", place: "广州", text: "加班到九点，去茶水间找咖啡，在柜子最里面翻到刚入职时买的搪瓷杯。居然还在，而且洗得干干净净倒扣着。问了一圈，没人承认动过。", tile: 2, likes: 8, comments: ["大概率是保洁阿姨顺手洗的吧", "等等，这个杯口的缺角怎么这么眼熟"], commenters: ["改完就走", "星期六有雨"], edited: "编辑于今天 22:53" },
     { id: "CAT19A", code: "ARTIFIC", user: "小区猫观察员", time: "今天 18:42", place: "苏州", text: "收衣服时发现它整只猫都窝进洗衣机里了，放心，机器没开。抱出来还冲我甩脸，录了三十八秒，声音开大一点能听见它在呼噜。", tile: 3, video: true, likes: 311, comments: ["标题把我吓一跳", "它左耳是不是缺了一点"], commenters: ["薯片袋扎手", "纸团丢不准"] },
     { id: "TOMATO", user: "小锅刚好", time: "3天前 19:20", place: "上海", text: "今天这个番茄真的一点味都没有，两勺糖下去还是像热过的水。别问放不放糖了，先问它是不是番茄。", likes: 57, comments: ["两勺都快拔丝了", "现在番茄确实淡"], commenters: ["白胡椒多一点", "双份香菜"] },
     { id: "TICKET", user: "散场以后", time: "4天前 22:11", place: "长沙", text: "散场时座位下面有两张旧票根，片名都掉完了。问工作人员，说不是他们的，让我扔。我又给带回来了，纯属手欠。", likes: 28, comments: ["可能是谁从旧钱包掉的", "背面还有影城名吗"], commenters: ["七排九座", "圆珠笔没水"] },
     { id: "FRIEND7", user: "阿鹿", time: "5天前 21:36", place: "北京", text: "跟高中同桌吃饭，前半小时都在各回各的消息。后来聊到校门口那家麻辣烫，才发现它都关六年了。我们俩点菜还是老样子，笑死。", likes: 142, comments: ["能约出来就已经很好了", "下次找个不吵的店吧"], commenters: ["周末再洗头", "靠窗的位置"] },
     { id: "SEW091", user: "针脚很慢", time: "6天前 15:04", place: "泉州", text: "把外婆那台缝纫机拖去修了，能踩，就是皮带响得像小摩托。师傅说这型号他小时候见过，叫我千万别当废铁卖。", likes: 64, comments: ["老机器修好特别耐用", "找老裁缝店应该会弄"], commenters: ["扣子装一盒", "十四厘米"] },
-    { id: "CAT16B", code: "AL_INTELLI", user: "老许不养鱼", time: "2016-03-09 13:14", place: "天津", text: "老橘八岁啦。平时装走不动，一听罐头就跑得飞快。昨天窗边随手拍的，居然还挺乖。", tile: 4, likes: 73, comments: ["八岁还是小猫", "尾巴最后一圈颜色好浅"], commenters: ["胡同口喂猫", "冰箱贴太多"] },
+    { id: "CAT16B", code: "IAL_INTELLI", user: "老许不养鱼", time: "2016-03-09 13:14", place: "天津", text: "老橘八岁啦。平时装走不动，一听罐头就跑得飞快。昨天窗边随手拍的，居然还挺乖。", tile: 4, likes: 73, comments: ["八岁还是小猫", "尾巴最后一圈颜色好浅"], commenters: ["胡同口喂猫", "冰箱贴太多"] },
     { id: "PLANT4", user: "叶子朝北", time: "一周前", place: "昆明", text: "出差四天，绿萝活得很好，自动浇水器把桌子淹了。桌脚现在垫着三本过期杂志，居然不晃了。", likes: 36, comments: ["绿萝活了，桌子差点没了", "快看插座有没有进水"], commenters: ["玻璃杯不隔夜", "不开花也行"] },
     { id: "CUP24C", code: "GENCE", user: "薄荷冰", time: "2024-07-22 16:58", place: "成都", text: "收拾厨房时从吊柜最里面翻出个旧搪瓷杯，刷了半天，拿来插刚剪下来的薄荷。发给朋友看，她问我是不是从哈尔滨带回来的。可我从来没去过哈尔滨。", tile: 1, likes: 17, comments: ["杯口那个缺角我好像在哪见过", "这种款以前很常见吧"], commenters: ["第七码头", "想吃凉面"] },
-    { id: "LIT20B", code: "AL_INTELLI", user: "雨停再走", time: "2020-06-18 22:17", place: "青岛", text: "从医院出来雨已经停了。回来的时候，楼道里的灯刚好亮了。大家都睡了，我在门口站了半天，才想起来钥匙一直揣在外套口袋里。", likes: 24, comments: ["辛苦了，早点睡", "最后这句我是不是在别的帖子里刷到过"], commenters: ["海边不开窗", "住在四楼"], edited: "编辑于今天 22:54" },
+    { id: "LIT20B", code: "IAL_INTELLI", user: "雨停再走", time: "2020-06-18 22:17", place: "青岛", text: "从医院出来雨已经停了。回来的时候，楼道里的灯刚好亮了。大家都睡了，我在门口站了半天，才想起来钥匙一直揣在外套口袋里。", likes: 24, comments: ["辛苦了，早点睡", "最后这句我是不是在别的帖子里刷到过"], commenters: ["海边不开窗", "住在四楼"], edited: "编辑于今天 22:54" },
     { id: "SLEEP2", user: "明天别熬了", time: "8天前 01:17", place: "宁波", text: "本人郑重宣布：明天一定早睡。", meme: true, likes: 203, comments: ["你上个月也发过", "明天具体是哪个明天"], commenters: ["夜宵先放下", "闹钟没响"] },
     { id: "NOODLE", user: "面要硬一点", time: "9天前 12:32", place: "兰州", text: "楼下面馆换老板了，辣子居然没换味。问了才知道配方、牌子、锅一起接走了，难怪桌上的醋瓶都还是那几个。", likes: 71, comments: ["只要宽面别给切细就行", "原老板是不是去新区了"], commenters: ["二两牛肉", "蒜苗另放"] },
     { id: "CAT22C", code: "GENCE", user: "橘子汽水", time: "2022-08-16 20:31", place: "厦门", text: "捡回来两个月了，医生说大概四个月。左耳以前受过伤，名字先叫橘子吧。今天第一次肯在洗衣机旁边睡，拖都拖不走。", tile: 3, likes: 219, comments: ["欢迎橘子！", "左耳那个缺口……怎么越看越像我以前喂过的一只"], commenters: ["海蛎煎加蛋", "猫砂又涨价"] },
@@ -996,7 +1090,7 @@
     const recentVisitors = state.baiyuLoaded >= 1 ? `<section class="baiyu-visitors"><h2>最近来访</h2><div>${avatar("LUSI_17", true)}<span><b>LUSI_17</b><small>2分钟前</small></span></div>${state.baiyuLoaded >= 2 ? `<div>${baiyuAvatar("访客1283", true)}<span><b>访客1283</b><small>刚刚</small></span></div><p class="previous-visit">上次访问：2019-10-02 22:17</p>` : ""}</section>` : "";
     const onlineCount = state.baiyuLoaded >= 2 ? "12,483" : "12,482";
     const moreLabel = state.baiyuLoaded === 0 ? "加载更多" : "展开更早内容";
-    app.innerHTML = `${sessionTools()}<div class="baiyu-page baiyu-depth-${state.baiyuLoaded}">${baiyuHeader()}<main class="baiyu-layout"><section class="baiyu-feed"><div class="composer"><div class="composer-user">${baiyuAvatar("访客1283", true)}<textarea aria-label="分享近况" placeholder="分享此刻的生活……"></textarea></div><div><span>▧ 图片　▷ 视频　☺ 表情</span><button type="button" data-action="publish-baiyu">发布</button></div></div>${isSearch ? `<div class="baiyu-search-note"><a href="#" data-action="clear-baiyu-search">← 返回首页</a><span>找到 ${posts.length} 条与“${esc(state.baiyuQuery)}”相关的内容</span></div>` : `<div class="feed-tabs"><b>推荐</b><span>最新</span><small>按发布时间排序</small></div>`}${posts.length ? posts.map(baiyuCard).join("") : `<div class="no-results">没有找到相关内容。</div>`}${!isSearch && state.baiyuLoaded < 2 ? `<button class="load-more" type="button" data-action="load-more">${moreLabel}</button>` : ""}</section><aside class="baiyu-side"><section><h2>社区热议 <small>24小时</small></h2><ol><li>最近一次做成功的菜 <span>3.2万</span></li><li>你会给流浪猫起什么名字 <span>1.8万</span></li><li>毕业搬家到底要多少箱子 <span>9,406</span></li><li>今天的晚霞 <span>7,831</span></li></ol></section><section><h2>社区公告</h2><p>请勿发布他人隐私信息。旧站账号已自动合并，2015年前的访问记录仍在恢复。</p><span class="baiyu-static-link">查看社区公约 →</span></section>${recentVisitors}<section class="online-box"><strong>${onlineCount}</strong><span>人正在白榆生活</span><small>今日新增 2,106 条动态</small></section></aside></main><footer class="baiyu-footer">关于白榆　·　社区公约　·　帮助中心　·　内容申诉　·　举报入口<br>© 2015—2026 白榆社区　增值电信业务经营许可证 B2-20210317</footer></div>${chatWidget()}`;
+    app.innerHTML = `${sessionTools()}<div class="baiyu-page baiyu-depth-${state.baiyuLoaded}">${baiyuHeader()}<main class="baiyu-layout"><section class="baiyu-feed"><div class="composer"><div class="composer-user">${baiyuAvatar("访客1283", true)}<textarea aria-label="分享近况" placeholder="分享此刻的生活……"></textarea></div><div><span>▧ 图片　▷ 视频　☺ 表情</span><button type="button" data-action="publish-baiyu">发布</button></div></div>${isSearch ? `<div class="baiyu-search-note"><a href="#" data-action="clear-baiyu-search">← 返回首页</a><span>找到 ${posts.length} 条与“${esc(state.baiyuQuery)}”相关的内容</span></div>` : `<div class="feed-tabs"><b>推荐</b><span>最新</span><small>按发布时间排序</small></div>`}${posts.length ? posts.map(baiyuCard).join("") : `<div class="no-results">没有找到相关内容。</div>`}${!isSearch && state.baiyuLoaded < 2 ? `<button class="load-more" type="button" data-action="load-more">${moreLabel}</button>` : ""}</section><aside class="baiyu-side"><section><h2>社区热议 <small>24小时</small></h2><ol><li>最近一次做成功的菜 <span>3.2万</span></li><li>你会给流浪猫起什么名字 <span>1.8万</span></li><li>毕业搬家到底要多少箱子 <span>9,406</span></li><li>今天的晚霞 <span>7,831</span></li></ol></section><section><h2>社区公告</h2><p>请勿发布他人隐私信息。旧站账号已自动合并，2015年前的访问记录仍在恢复。</p><span class="baiyu-static-link">查看社区公约 →</span></section>${recentVisitors}<section class="online-box"><strong>${onlineCount}</strong><span>人正在白榆生活</span><small>今日新增 2,106 条动态</small></section><button class="baiyu-back-top" type="button" data-action="baiyu-back-top">回到顶部</button></aside></main><footer class="baiyu-footer">关于白榆　·　社区公约　·　帮助中心　·　内容申诉　·　举报入口<br>© 2015—2026 白榆社区　增值电信业务经营许可证 B2-20210317</footer></div>${chatWidget()}`;
     bindBaiyu();
     bindChat();
   }
@@ -1033,6 +1127,9 @@
       saveState();
       renderBaiyu();
       window.requestAnimationFrame(() => window.scrollTo({ top: scrollTop, behavior: "auto" }));
+    });
+    document.querySelector("[data-action='baiyu-back-top']")?.addEventListener("click", () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
     });
     document.querySelectorAll("[data-post]").forEach((el) => el.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1167,7 +1264,8 @@
       if (!message) return;
       if (state.chatMode === "lusi") {
         if (state.lusiChatStage < 7) return;
-        const correct = normalizeKey(message) === "artificialintelligence";
+        const normalized = normalizeKey(message);
+        const correct = ["ai", "artificialintelligence", "artificalintelligence"].includes(normalized);
         if (!Array.isArray(state.lusiKeyAttempts)) state.lusiKeyAttempts = [];
         state.lusiKeyAttempts.push({ text: message, correct });
         if (correct) {
@@ -1277,7 +1375,7 @@
       eyebrow: "CASE FILE · OBSERVER 9804",
       title: "第9,804号观察者完成亲密关系辅助实验",
       lead: "校内用户 XIAOMAN_21 已由普通体验者转为外部观察者。该个案证实：关系对象无需知道每一句话究竟由谁写下。",
-      body: `<article class="company-news-detail xiaoman-case"><a href="#" data-company="home">← 返回新闻与进展</a><div class="xiaoman-case-summary"><figure class="xiaoman-case-photo"><img src="./xiaoman-case-9804.jpg" alt="第9,804号观察者小满的档案照片"><figcaption>ARCHIVE PORTRAIT · XIAOMAN_21</figcaption></figure><dl><div><dt>观察者代号</dt><dd>XIAOMAN_21</dd></div><div><dt>公开身份</dt><dd>梧桐大学在校生</dd></div><div><dt>模型介入</dt><dd>312 天 / 1,846 条消息</dd></div><div><dt>实验结果</dt><dd class="status-live">关系建立并保持稳定</dd></div></dl></div><p>从第一次见面的开场白，到道歉、晚安和节日祝福，模型持续替观察者生成并筛选最合适的回复。关系对象始终认为这些话来自小满本人。</p><p>第217天，观察者在没有模型建议时已无法完成超过三轮的私人对话。系统没有中止实验，而是将他转为第9,804号外部观察者，并继续以他的账号维持关系。</p><blockquote>“她喜欢上的当然是我。模型只是更知道我该说什么。”<br><small>——XIAOMAN_21，转化前访谈</small></blockquote></article>`,
+      body: `<article class="company-news-detail xiaoman-case"><a href="#" data-company="home">← 返回新闻与进展</a><div class="xiaoman-case-summary"><figure class="xiaoman-case-photo"><img src="${assetPath("xiaoman-case-9804.jpg")}" alt="第9,804号观察者小满的档案照片"><figcaption>ARCHIVE PORTRAIT · XIAOMAN_21</figcaption></figure><dl><div><dt>观察者代号</dt><dd>XIAOMAN_21</dd></div><div><dt>公开身份</dt><dd>梧桐大学在校生</dd></div><div><dt>模型介入</dt><dd>312 天 / 1,846 条消息</dd></div><div><dt>实验结果</dt><dd class="status-live">关系建立并保持稳定</dd></div></dl></div><p>从第一次见面的开场白，到道歉、晚安和节日祝福，模型持续替观察者生成并筛选最合适的回复。关系对象始终认为这些话来自小满本人。</p><p>第217天，观察者在没有模型建议时已无法完成超过三轮的私人对话。系统没有中止实验，而是将他转为第9,804号外部观察者，并继续以他的账号维持关系。</p><blockquote>“她喜欢上的当然是我。模型只是更知道我该说什么。”<br><small>——XIAOMAN_21，转化前访谈</small></blockquote></article>`,
     },
   };
 
@@ -1431,8 +1529,8 @@
       event.preventDefault();
       const targetPage = routeLink.dataset.route;
       rememberOrigin(targetPage);
-      if (targetPage === "xiaoman-messages") state.pmContact = "xiaoman";
-      if (targetPage === "lusi-messages") state.pmContact = "lusi";
+      if (targetPage === "xiaoman-messages") state.pmContact = routeLink.dataset.pmContact || "xiaoman";
+      if (targetPage === "lusi-messages") state.pmContact = routeLink.dataset.pmContact || "lusi";
       route(targetPage);
       return;
     }
@@ -1474,4 +1572,5 @@
     history.replaceState({ page: "takeover" }, "", takeoverUrl);
   } else if (requestedPage && !state.ending) state.page = requestedPage;
   render();
+  scheduleOrderedImagePreload();
 })();
